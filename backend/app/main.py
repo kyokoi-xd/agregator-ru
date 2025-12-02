@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Query
 from typing import Dict, Any
-from app.config import CACHE_TTL
-from app.cache import InMemoryCache
-from app.services.coordinator import run_all_scrapers, dedupe_offers
-from app.models import SearchResponse, Offer
+from .config import CACHE_TTL
+from .cache import InMemoryCache
+from .services.coordinator import run_all_scrapers, dedupe_offers
+from .models import SearchResponse, Offer
 
 
 app = FastAPI(title="Price Aggregator (modular)")

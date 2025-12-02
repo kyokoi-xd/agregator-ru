@@ -1,6 +1,6 @@
 import time
 from typing import Any, Dict, Optional
-from app.config import CACHE_TTL
+from .config import CACHE_TTL
 
 
 class InMemoryCache:

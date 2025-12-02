@@ -1,10 +1,11 @@
 from typing import List
-from app.models import Offer
+import logging
+from ..models import Offer
 from bs4 import BeautifulSoup
 from urllib.parse import quote_plus
 import httpx
-from app.utils import extract_price
-from app.config import USER_AGENT, MAX_SCRAPE_RESULTS
+from ..utils import extract_price
+from ..config import USER_AGENT, MAX_SCRAPE_RESULTS
 
 WB_CARD_SELECTORS = [
     ".product-card",
@@ -17,9 +18,19 @@ async def scrape(query:str, client:httpx.AsyncClient) -> List[Offer]:
     q = quote_plus(query)
     url = f"https://www.wildberries.ru/catalog/0/search.aspx?search={q}"
     headers = {"User-Agent": USER_AGENT}
-    resp = await client.get(url, headers=headers, timeout=15.0)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "lxml")
+    try:
+        resp = await client.get(url, headers=headers, timeout=15.0)
+        resp.raise_for_status()
+    except Exception as exc:  # httpx.RequestError, httpx.HTTPStatusError, etc.
+        logging.debug("Wildberries scraper request failed: %s %s", url, exc)
+        # Return an empty list when a remote scraper fails so the whole request doesn't 500
+        return []
+
+    try:
+        soup = BeautifulSoup(resp.text, "lxml")
+    except Exception as exc:  # parsing errors should not crash the app
+        logging.debug("Wildberries parsing failed: %s", exc)
+        return []
 
     cards = []
     for sel in WB_CARD_SELECTORS:

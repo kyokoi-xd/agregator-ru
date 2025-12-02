@@ -1,22 +1,30 @@
 from typing import List
 import httpx
-from app.models import Offer
-from app.scrappers import wildberries
-from app.services.dedupe import group_similar_titles
+from ..models import Offer
+from ..scrapers import wildberries
+from .dedupe import group_similar_titles
 import asyncio
 
-async def run_all_scrappers(query: str) -> List[Offer]:
+async def run_all_scrapers(query: str) -> List[Offer]:
     """
     Оркестратор: запускает все скрейперы параллельно и объединяет результаты.
     Сейчас — только wildberries, но легко добавить другие.
     """
     async with httpx.AsyncClient() as client:
-        # если будет больше парсеров — используем gather
-        wb_task = asyncio.create_task(wildberries.scrape(query, client))
-        # добавляй тут другие: ozon.scrape(...), etc.
-        wb_res = await wb_task
+        # keep tasks in a list so we can run many scrapers in parallel
+        tasks = [asyncio.create_task(wildberries.scrape(query, client))]
+        # add other scrapers here: tasks.append(asyncio.create_task(ozon.scrape(...)))
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # сейчас просто возвращаем объединённый список
+    # collect all successful results and flatten; ignore failing scrapers
+    wb_res = []
+    for r in results:
+        if isinstance(r, Exception):
+            # already logged by scraper, skip
+            continue
+        wb_res.extend(r)
+
+    # now return the combined list
     # позже можно применить dedupe и ранжирование
     return wb_res
 
